@@ -1,0 +1,30 @@
+[
+    {
+        "caption": "Stumblr: Post as Draft",
+        "command": "tumblr_post_draft"
+    },
+    {
+        "caption": "Stumblr: Check if Logged In",
+        "command": "check_credentials"
+    },
+    {
+        "caption": "Stumblr: Login",
+        "command": "tumblr_login"
+    },
+    {
+        "caption": "Stumblr: Fetch Drafts",
+        "command": "tumblr_list_drafts"
+    },
+    {
+        "caption": "Stumblr: Publish Current Draft",
+        "command": "tumblr_publish_draft"
+    },
+    {
+        "caption": "Stumblr: Update Current Draft",
+        "command": "tumblr_update_draft"
+    },
+    {
+        "caption": "Stumblr: Delete Current Draft",
+        "command": "tumblr_delete_draft"
+    }
+]

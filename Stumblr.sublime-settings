@@ -1,0 +1,29 @@
+{
+    // these will be the 'OAuth Consumer Key' and 'secret key' you'll
+    // get from http://www.tumblr.com/oauth/apps
+    // THESE ARE NOT ACTUAL KEYS, you need to get them at that url above
+    // but when you actually get them, they will look suspiciously like this
+    // "consumer_key": "P4w7ibTrFa1VzBUp4PqCwE9uOTc7uvc6IlfjpYqCleiJmA60YE6",
+    // "secret_key": "BiXIvB0BZdyGD2E7ich9TArASZEjzAFGiMzE3qdnWznW3Vw54o",
+
+    // this should be the base hostname or cname of the blog you are posting to
+    // "base_hostname": "nsfmc.tumblr.com",
+
+    // these should either be acquired manually (hardcore!) or you should use
+    // the Stumblr: login command to commence the oauth tango for you.
+    // THESE ARE NOT ACTUAL TOKENS, you should override these by either, again
+    // running the 'Stumblr: login' command or by manually acquiring oauth tokens
+    // "oauth_token": "PoqWHfHpxYfbaa9zgR9TZoNW43lfTojWb1BpdWSoGLCSRc79El",
+    // "oauth_token_secret": "dPFJVImpqULgpqRfiYtchMvPJY6cDqdG0UFKmpRvZgCZJearC2",
+
+    // the default setting, true, automatically updates a post's buffer on save.
+    // This is probably what you want since the default action is to edit drafts
+    // and not published posts.
+    "update_on_save": true,
+
+    // the port that the initial oauth callback listens on. This should be an
+    // unoccupied port on the local computer, so don't set it to anything that
+    // will already be bound or the tumblor requesthandler will break.
+    // TODO(marcos): enable this correctly, this is connected to nothing right now
+    "callback_port": 8123
+}
