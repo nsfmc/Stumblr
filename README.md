@@ -8,7 +8,7 @@ a sublime text 3 interface to tumblr
 
 for now, because this is all very early stage, your best bet is to
 
-    cd '~/Library/Application Support/Packages'
+    cd '~/Library/Application Support/Sublime Text 3/Packages'
     git clone https://github.com/nsfmc/Stumblr
 
 After you clone, though, you need to go to...
