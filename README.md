@@ -65,7 +65,7 @@ You can copy over the default settings from the adjacent `Settings - Default` me
 
 ## The default settings
 
-```json
+```javascript
 {
     // these will be the 'OAuth Consumer Key' and 'secret key' you'll
     // get from http://www.tumblr.com/oauth/apps
