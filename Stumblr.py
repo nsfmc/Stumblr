@@ -153,9 +153,12 @@ class ListDraftsThreaded(threading.Thread, TumblrUtility):
                 self.strip_tags(post['body'])[:80]
             ]
         if post['type'] == 'quote':
-            source = urlparse(post['source_url']).path
+            source = self.strip_tags(post.get('source', ''))
+            if(post.get('source_url')):
+                source = urlparse(post.get('source_url','')).path
+            source_title = post.get('source_title', '')
             return [source[-60:],
-                "%s: %s" % (post['date'], post['source_title']),
+                "%s: %s" % (post['date'], source_title),
                 self.strip_tags(post['text'])[:80]
             ]
         if post['type'] == 'link':
