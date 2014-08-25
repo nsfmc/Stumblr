@@ -216,8 +216,19 @@ class ListDraftsThreaded(threading.Thread, TumblrUtility):
         for k in settings:
             logging.debug('setting %s:%s for view' % (k, settings[k]))
             new_view.settings().set('stumblr_%s' % k, settings[k])
-            new_view.set_syntax_file('Packages/Markdown/Markdown.tmLanguage')
+            self.set_syntax(new_view)
         pass
+
+    def set_syntax(self, view):
+        """looks for a markdown syntax and applies it to a view"""
+        possible_syntaxes = sublime.find_resources("Markdown.tmLanguage")
+        if possible_syntaxes:
+            md_syntax = possible_syntaxes[0]
+            logging.debug('setting syntax file to: %s', md_syntax)
+            view.set_syntax_file(md_syntax)
+        else:
+            logging.debug('could not finde a Markdown.tmLanguage')
+        return None
 
 
 class StumblrEvents(sublime_plugin.EventListener):
