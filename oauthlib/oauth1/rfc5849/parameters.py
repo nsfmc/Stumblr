@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
 """
 oauthlib.parameters
 ~~~~~~~~~~~~~~~~~~~
@@ -9,6 +7,7 @@ This module contains methods related to `section 3.5`_ of the OAuth 1.0a spec.
 
 .. _`section 3.5`: http://tools.ietf.org/html/rfc5849#section-3.5
 """
+from __future__ import absolute_import, unicode_literals
 
 try:
     from urlparse import urlparse, urlunparse
@@ -78,7 +77,7 @@ def prepare_headers(oauth_params, headers=None, realm=None):
     if realm:
         # NOTE: realm should *not* be escaped
         authorization_header_parameters = ('realm="%s", ' % realm +
-            authorization_header_parameters)
+                                           authorization_header_parameters)
 
     # the auth-scheme name set to "OAuth" (case insensitive).
     authorization_header = 'OAuth %s' % authorization_header_parameters
@@ -133,5 +132,6 @@ def prepare_request_uri_query(oauth_params, uri):
     """
     # append OAuth params to the existing set of query components
     sch, net, path, par, query, fra = urlparse(uri)
-    query = urlencode(_append_params(oauth_params, extract_params(query) or []))
+    query = urlencode(
+        _append_params(oauth_params, extract_params(query) or []))
     return urlunparse((sch, net, path, par, query, fra))

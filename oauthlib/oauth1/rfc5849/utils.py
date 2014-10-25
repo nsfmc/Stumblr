@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
 """
 oauthlib.utils
 ~~~~~~~~~~~~~~
@@ -8,6 +6,7 @@ oauthlib.utils
 This module contains utility methods used by various parts of the OAuth
 spec.
 """
+from __future__ import absolute_import, unicode_literals
 
 try:
     import urllib2
@@ -53,7 +52,8 @@ def escape(u):
 
     """
     if not isinstance(u, unicode_type):
-        raise ValueError('Only unicode objects are escapable.')
+        raise ValueError('Only unicode objects are escapable. ' +
+                         'Got %s of type %s.' % (u, type(u)))
     # Letters, digits, and the characters '_.-' are already treated as safe
     # by urllib.quote(). We need to add '~' to fully support rfc5849.
     return quote(u, safe=b'~')
@@ -63,17 +63,6 @@ def unescape(u):
     if not isinstance(u, unicode_type):
         raise ValueError('Only unicode objects are unescapable.')
     return unquote(u)
-
-
-def urlencode(query):
-    """Encode a sequence of two-element tuples or dictionary into a URL query string.
-
-    Operates using an OAuth-safe escape() method, in contrast to urllib.urlencode.
-    """
-    # Convert dictionaries to list of tuples
-    if isinstance(query, dict):
-        query = query.items()
-    return "&".join(['='.join([escape(k), escape(v)]) for k, v in query])
 
 
 def parse_keqv_list(l):
@@ -90,11 +79,11 @@ def parse_http_list(u):
 
 def parse_authorization_header(authorization_header):
     """Parse an OAuth authorization header into a list of 2-tuples"""
-    auth_scheme = 'OAuth '
-    if authorization_header.startswith(auth_scheme):
-        authorization_header = authorization_header.replace(auth_scheme, '', 1)
-    items = parse_http_list(authorization_header)
-    try:
-        return list(parse_keqv_list(items).items())
-    except ValueError:
-        raise ValueError('Malformed authorization header')
+    auth_scheme = 'OAuth '.lower()
+    if authorization_header[:len(auth_scheme)].lower().startswith(auth_scheme):
+        items = parse_http_list(authorization_header[len(auth_scheme):])
+        try:
+            return list(parse_keqv_list(items).items())
+        except (IndexError, ValueError):
+            pass
+    raise ValueError('Malformed authorization header')

@@ -1,5 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
 """
 oauthlib.oauth1.rfc5849.signature
 ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
@@ -22,6 +21,8 @@ Steps for signing a request:
 
 .. _`section 3.4`: http://tools.ietf.org/html/rfc5849#section-3.4
 """
+from __future__ import absolute_import, unicode_literals
+
 import binascii
 import hashlib
 import hmac
@@ -35,7 +36,7 @@ from oauthlib.common import bytes_type, unicode_type
 
 
 def construct_base_string(http_method, base_string_uri,
-        normalized_encoded_request_parameters):
+                          normalized_encoded_request_parameters):
     """**String Construction**
     Per `section 3.4.1.1`_ of the spec.
 
@@ -99,7 +100,7 @@ def construct_base_string(http_method, base_string_uri,
     return base_string
 
 
-def normalize_base_string_uri(uri):
+def normalize_base_string_uri(uri, host=None):
     """**Base String URI**
     Per `section 3.4.1.2`_ of the spec.
 
@@ -118,6 +119,8 @@ def normalize_base_string_uri(uri):
     is represented by the base string URI: "https://www.example.net:8080/".
 
     .. _`section 3.4.1.2`: http://tools.ietf.org/html/rfc5849#section-3.4.1.2
+
+    The host argument overrides the netloc part of the uri argument.
     """
     if not isinstance(uri, unicode_type):
         raise ValueError('uri must be a unicode object.')
@@ -129,7 +132,19 @@ def normalize_base_string_uri(uri):
     # are included by constructing an "http" or "https" URI representing
     # the request resource (without the query or fragment) as follows:
     #
-    # .. _`RFC2616`: http://tools.ietf.org/html/rfc3986
+    # .. _`RFC3986`: http://tools.ietf.org/html/rfc3986
+
+    if not scheme or not netloc:
+        raise ValueError('uri must include a scheme and netloc')
+
+    # Per `RFC 2616 section 5.1.2`_:
+    #
+    # Note that the absolute path cannot be empty; if none is present in
+    # the original URI, it MUST be given as "/" (the server root).
+    #
+    # .. _`RFC 2616 section 5.1.2`: http://tools.ietf.org/html/rfc2616#section-5.1.2
+    if not path:
+        path = '/'
 
     # 1.  The scheme and host MUST be in lowercase.
     scheme = scheme.lower()
@@ -137,7 +152,8 @@ def normalize_base_string_uri(uri):
 
     # 2.  The host and port values MUST match the content of the HTTP
     #     request "Host" header field.
-    # TODO: enforce this constraint
+    if host is not None:
+        netloc = host.lower()
 
     # 3.  The port MUST be included if it is not the default port for the
     #     scheme, and MUST be excluded if it is the default.  Specifically,
@@ -169,10 +185,10 @@ def normalize_base_string_uri(uri):
 #    particular manner that is often different from their original
 #    encoding scheme, and concatenated into a single string.
 #
-#    .. _`section 3.4.1.3`: http://tools.ietf.org/html/rfc5849#section-3.4.1.3
+# .. _`section 3.4.1.3`: http://tools.ietf.org/html/rfc5849#section-3.4.1.3
 
 def collect_parameters(uri_query='', body=[], headers=None,
-        exclude_oauth_signature=True, with_realm=False):
+                       exclude_oauth_signature=True, with_realm=False):
     """**Parameter Sources**
 
     Parameters starting with `oauth_` will be unescaped.
@@ -289,7 +305,7 @@ def collect_parameters(uri_query='', body=[], headers=None,
     # base string if present.
     if exclude_oauth_signature:
         unescaped_params = list(filter(lambda i: i[0] != 'oauth_signature',
-            unescaped_params))
+                                       unescaped_params))
 
     return unescaped_params
 
@@ -392,6 +408,13 @@ def normalize_parameters(params):
     return '&'.join(parameter_parts)
 
 
+def sign_hmac_sha1_with_client(base_string, client):
+    return sign_hmac_sha1(base_string,
+                          client.client_secret,
+                          client.resource_owner_secret
+                          )
+
+
 def sign_hmac_sha1(base_string, client_secret, resource_owner_secret):
     """**HMAC-SHA1**
 
@@ -472,6 +495,10 @@ def sign_rsa_sha1(base_string, rsa_private_key):
     return binascii.b2a_base64(p.sign(h))[:-1].decode('utf-8')
 
 
+def sign_rsa_sha1_with_client(base_string, client):
+    return sign_rsa_sha1(base_string, client.rsa_key)
+
+
 def sign_plaintext(client_secret, resource_owner_secret):
     """Sign a request using plaintext.
 
@@ -507,19 +534,32 @@ def sign_plaintext(client_secret, resource_owner_secret):
     return signature
 
 
+def sign_plaintext_with_client(base_string, client):
+    return sign_plaintext(client.client_secret, client.resource_owner_secret)
+
+
 def verify_hmac_sha1(request, client_secret=None,
-    resource_owner_secret=None):
+                     resource_owner_secret=None):
     """Verify a HMAC-SHA1 signature.
 
     Per `section 3.4`_ of the spec.
 
     .. _`section 3.4`: http://tools.ietf.org/html/rfc5849#section-3.4
+
+    To satisfy `RFC2616 section 5.2`_ item 1, the request argument's uri
+    attribute MUST be an absolute URI whose netloc part identifies the
+    origin server or gateway on which the resource resides. Any Host
+    item of the request argument's headers dict attribute will be
+    ignored.
+
+    .. _`RFC2616 section 5.2`: http://tools.ietf.org/html/rfc2616#section-5.2
+
     """
     norm_params = normalize_parameters(request.params)
     uri = normalize_base_string_uri(request.uri)
     base_string = construct_base_string(request.http_method, uri, norm_params)
     signature = sign_hmac_sha1(base_string, client_secret,
-        resource_owner_secret)
+                               resource_owner_secret)
     return safe_string_equals(signature, request.signature)
 
 
@@ -532,6 +572,13 @@ def verify_rsa_sha1(request, rsa_public_key):
 
     .. _`section 3.4.3`: http://tools.ietf.org/html/rfc5849#section-3.4.3
 
+    To satisfy `RFC2616 section 5.2`_ item 1, the request argument's uri
+    attribute MUST be an absolute URI whose netloc part identifies the
+    origin server or gateway on which the resource resides. Any Host
+    item of the request argument's headers dict attribute will be
+    ignored.
+
+    .. _`RFC2616 section 5.2`: http://tools.ietf.org/html/rfc2616#section-5.2
     """
     from Crypto.PublicKey import RSA
     from Crypto.Signature import PKCS1_v1_5

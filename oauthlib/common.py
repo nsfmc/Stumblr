@@ -1,6 +1,4 @@
 # -*- coding: utf-8 -*-
-from __future__ import absolute_import, unicode_literals
-
 """
 oauthlib.common
 ~~~~~~~~~~~~~~
@@ -8,12 +6,15 @@ oauthlib.common
 This module provides data structures and utilities common
 to all implementations of OAuth.
 """
+from __future__ import absolute_import, unicode_literals
 
 import collections
+import datetime
 import random
 import re
 import sys
 import time
+
 try:
     from urllib import quote as _quote
     from urllib import unquote as _unquote
@@ -32,7 +33,7 @@ UNICODE_ASCII_CHARACTER_SET = ('abcdefghijklmnopqrstuvwxyz'
                                '0123456789')
 
 CLIENT_ID_CHARACTER_SET = (r' !"#$%&\'()*+,-./0123456789:;<=>?@ABCDEFGHIJKLMN'
-                            'OPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}')
+                           'OPQRSTUVWXYZ[\\]^_`abcdefghijklmnopqrstuvwxyz{|}')
 
 
 always_safe = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
@@ -40,7 +41,6 @@ always_safe = ('ABCDEFGHIJKLMNOPQRSTUVWXYZ'
                '0123456789' '_.-')
 
 PY3 = sys.version_info[0] == 3
-
 
 if PY3:
     unicode_type = str
@@ -104,7 +104,7 @@ def decode_params_utf8(params):
     return decoded
 
 
-urlencoded = set(always_safe) | set('=&;%+~')
+urlencoded = set(always_safe) | set('=&;%+~,*@')
 
 
 def urldecode(query):
@@ -118,7 +118,12 @@ def urldecode(query):
     """
     # Check if query contains invalid characters
     if query and not set(query) <= urlencoded:
-        raise ValueError('Not a valid urlencoded string.')
+        error = ("Error trying to decode a non urlencoded string. "
+                 "Found invalid characters: %s "
+                 "in the string: '%s'. "
+                 "Please ensure the request/response body is "
+                 "x-www-form-urlencoded.")
+        raise ValueError(error % (set(query) - urlencoded, query))
 
     # Check for correctly hex encoded values using a regular expression
     # All encoded values begin with % followed by two hex characters
@@ -142,7 +147,8 @@ def urldecode(query):
     # Python 3.3 however
     # >>> urllib.parse.parse_qsl(u'%E5%95%A6%E5%95%A6')
     # u'\u5566\u5566'
-    query = query.encode('utf-8') if not PY3 and isinstance(query, unicode_type) else query
+    query = query.encode(
+        'utf-8') if not PY3 and isinstance(query, unicode_type) else query
     # We want to allow queries such as "c2" whereas urlparse.parse_qsl
     # with the strict_parsing flag will not.
     params = urlparse.parse_qsl(query, keep_blank_values=True)
@@ -219,6 +225,40 @@ def generate_token(length=30, chars=UNICODE_ASCII_CHARACTER_SET):
     return ''.join(rand.choice(chars) for x in range(length))
 
 
+def generate_signed_token(private_pem, request):
+    import Crypto.PublicKey.RSA as RSA
+    import jwt
+
+    private_key = RSA.importKey(private_pem)
+
+    now = datetime.datetime.utcnow()
+
+    claims = {
+        'scope': request.scope,
+        'exp': now + datetime.timedelta(seconds=request.expires_in)
+    }
+
+    claims.update(request.claims)
+
+    token = jwt.encode(claims, private_key, 'RS256')
+    token = to_unicode(token, "UTF-8")
+
+    return token
+
+
+def verify_signed_token(private_pem, token):
+    import Crypto.PublicKey.RSA as RSA
+    import jwt
+
+    public_key = RSA.importKey(private_pem).publickey()
+
+    try:
+        # return jwt.verify_jwt(token.encode(), public_key)
+        return jwt.decode(token, public_key)
+    except:
+        raise Exception
+
+
 def generate_client_id(length=30, chars=CLIENT_ID_CHARACTER_SET):
     """Generates an OAuth client_id
 
@@ -230,10 +270,9 @@ def generate_client_id(length=30, chars=CLIENT_ID_CHARACTER_SET):
 
 def add_params_to_qs(query, params):
     """Extend a query with a list of two-tuples."""
-    if isinstance(query, dict):
-        queryparams = query.items()
-    else:
-        queryparams = urlparse.parse_qsl(query, keep_blank_values=True)
+    if isinstance(params, dict):
+        params = params.items()
+    queryparams = urlparse.parse_qsl(query, keep_blank_values=True)
     queryparams.extend(params)
     return urlencode(queryparams)
 
@@ -242,7 +281,7 @@ def add_params_to_uri(uri, params, fragment=False):
     """Add a list of two-tuples to the uri query components."""
     sch, net, path, par, query, fra = urlparse.urlparse(uri)
     if fragment:
-        fra = add_params_to_qs(query, params)
+        fra = add_params_to_qs(fra, params)
     else:
         query = add_params_to_qs(query, params)
     return urlparse.urlunparse((sch, net, path, par, query, fra))
@@ -266,7 +305,7 @@ def safe_string_equals(a, b):
     return result == 0
 
 
-def to_unicode(data, encoding):
+def to_unicode(data, encoding='UTF-8'):
     """Convert a number of different types of objects to unicode."""
     if isinstance(data, unicode_type):
         return data
@@ -284,7 +323,7 @@ def to_unicode(data, encoding):
             return (to_unicode(i, encoding) for i in data)
         else:
             # We support 2.6 which lacks dict comprehensions
-            if isinstance(data, dict):
+            if hasattr(data, 'items'):
                 data = data.items()
             return dict(((to_unicode(k, encoding), to_unicode(v, encoding)) for k, v in data))
 
@@ -292,6 +331,7 @@ def to_unicode(data, encoding):
 
 
 class CaseInsensitiveDict(dict):
+
     """Basic case insensitive dict with strings only keys."""
 
     proxy = {}
@@ -322,6 +362,7 @@ class CaseInsensitiveDict(dict):
 
 
 class Request(object):
+
     """A malleable representation of a signable HTTP request.
 
     Body argument may contain any data, but parameters will only be decoded if
@@ -336,7 +377,7 @@ class Request(object):
     """
 
     def __init__(self, uri, http_method='GET', body=None, headers=None,
-            encoding='utf-8'):
+                 encoding='utf-8'):
         # Convert to unicode using encoding if given, else assume unicode
         encode = lambda x: to_unicode(x, encoding) if encoding else x
 
@@ -355,6 +396,10 @@ class Request(object):
     def __getattr__(self, name):
         return self._params.get(name, None)
 
+    def __repr__(self):
+        return '<oauthlib.Request url="%s", http_method="%s", headers="%s", body="%s">' % (
+            self.uri, self.http_method, self.headers, self.body)
+
     @property
     def uri_query(self):
         return urlparse.urlparse(self.uri).query
@@ -369,7 +414,8 @@ class Request(object):
     @property
     def duplicate_params(self):
         seen_keys = collections.defaultdict(int)
-        all_keys = (p[0] for p in self.decoded_body or [] + self.uri_query_params)
+        all_keys = (p[0]
+                    for p in (self.decoded_body or []) + self.uri_query_params)
         for k in all_keys:
             seen_keys[k] += 1
         return [k for k, c in seen_keys.items() if c > 1]
