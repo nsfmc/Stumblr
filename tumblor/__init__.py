@@ -66,9 +66,9 @@ class TumblrOAuthCallbackHandler(BaseHTTPRequestHandler):
 
 class Tumblor(object):
     """some utilities for accessing tumblr"""
-    request_token_url = 'http://www.tumblr.com/oauth/request_token'
-    authorize_url = 'http://www.tumblr.com/oauth/authorize'
-    access_token_url = 'http://www.tumblr.com/oauth/access_token'
+    request_token_url = 'https://www.tumblr.com/oauth/request_token'
+    authorize_url = 'https://www.tumblr.com/oauth/authorize'
+    access_token_url = 'https://www.tumblr.com/oauth/access_token'
 
     def __init__(self, consumer_key, secret_key, credentials=None,
         base_hostname=None):
@@ -175,7 +175,7 @@ class Tumblor(object):
     def call_api(self, method=None, params={}, type='blog', verb='get'):
         """A simple abstraction for calling the tumblr api"""
         if method:
-            endpoint = ('http://api.tumblr.com/v2/blog/%s%s'
+            endpoint = ('https://api.tumblr.com/v2/blog/%s%s'
                 % (self.base_hostname, method))
             if verb == 'post':
                 req = requests.post(url=endpoint, data=params, auth=self.oauth)
